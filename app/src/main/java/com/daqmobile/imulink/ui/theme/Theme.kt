@@ -1,58 +1,44 @@
 package com.daqmobile.imulink.ui.theme
 
-import android.app.Activity
-import android.os.Build
-import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.darkColorScheme
-import androidx.compose.material3.dynamicDarkColorScheme
-import androidx.compose.material3.dynamicLightColorScheme
-import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
-import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.graphics.Color
 
-private val DarkColorScheme = darkColorScheme(
-    primary = Purple80,
-    secondary = PurpleGrey80,
-    tertiary = Pink80
-)
+val Black     = Color(0xFF000000)
+val White     = Color(0xFFFFFFFF)
+val Gray900   = Color(0xFF111111)
+val Gray800   = Color(0xFF1C1C1C)
+val Gray700   = Color(0xFF2A2A2A)
+val Gray600   = Color(0xFF3A3A3A)
+val Gray500   = Color(0xFF555555)
+val Gray400   = Color(0xFF888888)
+val Gray300   = Color(0xFFAAAAAA)
+val Gray200   = Color(0xFFCCCCCC)
+val Gray100   = Color(0xFFE8E8E8)
 
-private val LightColorScheme = lightColorScheme(
-    primary = Purple40,
-    secondary = PurpleGrey40,
-    tertiary = Pink40
-
-    /* Other default colors to override
-    background = Color(0xFFFFFBFE),
-    surface = Color(0xFFFFFBFE),
-    onPrimary = Color.White,
-    onSecondary = Color.White,
-    onTertiary = Color.White,
-    onBackground = Color(0xFF1C1B1F),
-    onSurface = Color(0xFF1C1B1F),
-    */
+private val DarkColors = darkColorScheme(
+    primary             = White,
+    onPrimary           = Black,
+    primaryContainer    = Gray700,
+    onPrimaryContainer  = White,
+    secondary           = Gray300,
+    onSecondary         = Black,
+    background          = Black,
+    onBackground        = White,
+    surface             = Gray800,
+    onSurface           = White,
+    surfaceVariant      = Gray700,
+    onSurfaceVariant    = Gray300,
+    outline             = Gray600,
+    outlineVariant      = Gray700,
 )
 
 @Composable
-fun IMULinkTheme(
-    darkTheme: Boolean = isSystemInDarkTheme(),
-    // Dynamic color is available on Android 12+
-    dynamicColor: Boolean = true,
-    content: @Composable () -> Unit
-) {
-    val colorScheme = when {
-        dynamicColor && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S -> {
-            val context = LocalContext.current
-            if (darkTheme) dynamicDarkColorScheme(context) else dynamicLightColorScheme(context)
-        }
-
-        darkTheme -> DarkColorScheme
-        else -> LightColorScheme
-    }
-
+fun IMULinkTheme(content: @Composable () -> Unit) {
     MaterialTheme(
-        colorScheme = colorScheme,
-        typography = Typography,
-        content = content
+        colorScheme = DarkColors,
+        typography  = IMULinkTypography,
+        content     = content
     )
 }
