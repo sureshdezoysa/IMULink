@@ -25,26 +25,35 @@ fun HomeScreen(
     onNavigateToSettings: () -> Unit,
     onNavigateToHelp: () -> Unit
 ) {
-    val sample      by viewModel.displaySample.collectAsState()
-    val streamState by viewModel.streamState.collectAsState()
-    val countdown   by viewModel.countdownSecs.collectAsState()
-    val deviceIp    by viewModel.deviceIp.collectAsState()
-    val settings    by viewModel.settings.collectAsState()
-    val orientation = LocalConfiguration.current.orientation
+    val sample        by viewModel.displaySample.collectAsState()
+    val streamState   by viewModel.streamState.collectAsState()
+    val countdown     by viewModel.countdownSecs.collectAsState()
+    val deviceIp      by viewModel.deviceIp.collectAsState()
+    val settings      by viewModel.settings.collectAsState()
+    val statusMessage by viewModel.statusMessage.collectAsState()
+    val orientation    = LocalConfiguration.current.orientation
 
     if (orientation == Configuration.ORIENTATION_LANDSCAPE) {
-        LandscapeLayout(sample, streamState, countdown, deviceIp, settings.isPro,
-            { viewModel.toggleStreaming() }, onNavigateToSettings, onNavigateToHelp)
+        LandscapeLayout(
+            sample, streamState, countdown, deviceIp,
+            settings.isPro, statusMessage,
+            { viewModel.toggleStreaming() },
+            onNavigateToSettings, onNavigateToHelp
+        )
     } else {
-        PortraitLayout(sample, streamState, countdown, deviceIp, settings.isPro,
-            { viewModel.toggleStreaming() }, onNavigateToSettings, onNavigateToHelp)
+        PortraitLayout(
+            sample, streamState, countdown, deviceIp,
+            settings.isPro, statusMessage,
+            { viewModel.toggleStreaming() },
+            onNavigateToSettings, onNavigateToHelp
+        )
     }
 }
 
 @Composable
 private fun PortraitLayout(
     sample: ImuSample, streamState: StreamState, countdown: Int,
-    deviceIp: String, isPro: Boolean,
+    deviceIp: String, isPro: Boolean, statusMessage: String,
     onStartStop: () -> Unit, onSettings: () -> Unit, onHelp: () -> Unit
 ) {
     Column(
@@ -63,14 +72,14 @@ private fun PortraitLayout(
             Spacer(Modifier.height(8.dp))
             SensorRow(label = "MAGNETOMETER",  unit = "µT",    data = sample.magnetometer)
         }
-        BottomControls(streamState, countdown, deviceIp, isPro, onStartStop)
+        BottomControls(streamState, countdown, deviceIp, isPro, statusMessage, onStartStop)
     }
 }
 
 @Composable
 private fun LandscapeLayout(
     sample: ImuSample, streamState: StreamState, countdown: Int,
-    deviceIp: String, isPro: Boolean,
+    deviceIp: String, isPro: Boolean, statusMessage: String,
     onStartStop: () -> Unit, onSettings: () -> Unit, onHelp: () -> Unit
 ) {
     Row(
@@ -105,13 +114,17 @@ private fun LandscapeLayout(
             verticalArrangement = Arrangement.Bottom
         ) {
             Spacer(Modifier.weight(1f))
-            BottomControls(streamState, countdown, deviceIp, isPro, onStartStop)
+            BottomControls(streamState, countdown, deviceIp, isPro, statusMessage, onStartStop)
         }
     }
 }
 
 @Composable
-private fun TopBar(streamState: StreamState, onSettings: () -> Unit, onHelp: () -> Unit) {
+private fun TopBar(
+    streamState: StreamState,
+    onSettings: () -> Unit,
+    onHelp: () -> Unit
+) {
     Row(
         modifier = Modifier.fillMaxWidth().padding(top = 12.dp),
         verticalAlignment = Alignment.CenterVertically
@@ -154,14 +167,31 @@ private fun StatusBadge(state: StreamState) {
 
 @Composable
 private fun BottomControls(
-    streamState: StreamState, countdown: Int,
-    deviceIp: String, isPro: Boolean, onStartStop: () -> Unit
+    streamState: StreamState,
+    countdown: Int,
+    deviceIp: String,
+    isPro: Boolean,
+    statusMessage: String,
+    onStartStop: () -> Unit
 ) {
     Column {
+        // Status message (shown when streaming or on error)
+        if (statusMessage.isNotEmpty()) {
+            Text(
+                text     = statusMessage,
+                style    = MaterialTheme.typography.bodyMedium,
+                color    = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(bottom = 6.dp)
+            )
+        }
+
         Row(
             modifier = Modifier.fillMaxWidth().padding(bottom = 4.dp),
             horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
+            // Top speed button (Pro only)
             Button(
                 onClick  = { },
                 enabled  = isPro,
@@ -173,10 +203,14 @@ private fun BottomControls(
                 ),
                 contentPadding = PaddingValues(0.dp)
             ) {
-                Text("⚡", fontSize = 22.sp,
+                Text(
+                    "⚡", fontSize = 22.sp,
                     color = if (isPro) MaterialTheme.colorScheme.onBackground
-                            else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.3f))
+                            else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.3f)
+                )
             }
+
+            // Start / Stop button with countdown
             Button(
                 onClick  = onStartStop,
                 modifier = Modifier.weight(1f).height(64.dp),
@@ -187,21 +221,30 @@ private fun BottomControls(
             ) {
                 val label = when {
                     streamState == StreamState.IDLE -> "START STREAMING"
-                    countdown > 0 -> "STOP  ${formatCountdown(countdown)}"
-                    else -> "STOP STREAMING"
+                    countdown > 0                  -> "STOP  ${formatCountdown(countdown)}"
+                    else                           -> "STOP STREAMING"
                 }
-                Text(label, style = MaterialTheme.typography.labelLarge,
-                    color = MaterialTheme.colorScheme.onBackground)
+                Text(
+                    label,
+                    style = MaterialTheme.typography.labelLarge,
+                    color = MaterialTheme.colorScheme.onBackground
+                )
             }
         }
-        Text(
-            text     = "This device: $deviceIp",
-            style    = MaterialTheme.typography.bodyLarge,
-            color    = MaterialTheme.colorScheme.onSurfaceVariant,
+
+        // Device IP row
+        Row(
             modifier = Modifier
-                .align(Alignment.CenterHorizontally)
-                .padding(top = 4.dp, bottom = 8.dp)
-        )
+                .fillMaxWidth()
+                .padding(top = 4.dp, bottom = 8.dp),
+            horizontalArrangement = Arrangement.Center
+        ) {
+            Text(
+                text  = "This device:  $deviceIp",
+                style = MaterialTheme.typography.bodyLarge,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
     }
 }
 
