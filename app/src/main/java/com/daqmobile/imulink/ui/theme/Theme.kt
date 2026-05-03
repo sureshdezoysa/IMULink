@@ -6,16 +6,33 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.Color
 
 val Black     = Color(0xFF000000)
+val StreamGreen = Color(0xFF00E676)  // bright green — visible from distance
 val White     = Color(0xFFFFFFFF)
-val Gray900   = Color(0xFF111111)
-val Gray800   = Color(0xFF1C1C1C)
-val Gray700   = Color(0xFF2A2A2A)
-val Gray600   = Color(0xFF3A3A3A)
-val Gray500   = Color(0xFF555555)
-val Gray400   = Color(0xFF888888)
-val Gray300   = Color(0xFFAAAAAA)
-val Gray200   = Color(0xFFCCCCCC)
-val Gray100   = Color(0xFFE8E8E8)
+
+// ── TUNING KNOB ──────────────────────────────────────────────────────────────
+// Raise this value to make ALL gray elements lighter.
+// 0 = pure black shift (very dark grays)
+// 40 = current default (subtle dark grays)
+// 80 = noticeably lighter grays
+// 120 = medium grays
+// Each gray step is offset from this base.
+private const val GRAY_LIFT = 60
+
+private fun gray(base: Int) = Color(
+    red   = (base + GRAY_LIFT).coerceIn(0, 255),
+    green = (base + GRAY_LIFT).coerceIn(0, 255),
+    blue  = (base + GRAY_LIFT).coerceIn(0, 255)
+)
+
+val Gray900   = gray(17)   // darkest surface
+val Gray800   = gray(28)   // card / surface background
+val Gray700   = gray(42)   // buttons, input fields
+val Gray600   = gray(58)   // dividers, borders
+val Gray500   = gray(85)   // disabled elements
+val Gray400   = gray(136)  // secondary text
+val Gray300   = gray(170)  // hint text
+val Gray200   = gray(204)  // light labels
+val Gray100   = gray(232)  // near-white
 
 private val DarkColors = darkColorScheme(
     primary             = White,

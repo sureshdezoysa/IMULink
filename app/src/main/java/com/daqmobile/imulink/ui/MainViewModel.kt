@@ -6,8 +6,10 @@ import android.net.ConnectivityManager
 import android.net.NetworkCapabilities
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import com.daqmobile.imulink.R
 import com.daqmobile.imulink.data.AppSettings
 import com.daqmobile.imulink.data.SettingsRepository
+import com.daqmobile.imulink.data.Validator
 import com.daqmobile.imulink.network.UdpSender
 import com.daqmobile.imulink.sensor.ImuRepository
 import com.daqmobile.imulink.sensor.ImuSample
@@ -29,6 +31,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     val imuRepository      = ImuRepository(app)
     val settingsRepository = SettingsRepository(app)
     private val udpSender  = UdpSender()
+    private val appContext  = app.applicationContext
 
     val settings: StateFlow<AppSettings> = settingsRepository.settings
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), AppSettings())
@@ -45,16 +48,25 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     private val _deviceIp = MutableStateFlow(getDeviceIp())
     val deviceIp: StateFlow<String> = _deviceIp.asStateFlow()
 
+    private val _popupMessage = MutableStateFlow("")
+    val popupMessage: StateFlow<String> = _popupMessage.asStateFlow()
+
     private val _statusMessage = MutableStateFlow("")
     val statusMessage: StateFlow<String> = _statusMessage.asStateFlow()
 
-    // true = red warning, false = normal grey text
-    private val _statusIsError = MutableStateFlow(false)
-    val statusIsError: StateFlow<Boolean> = _statusIsError.asStateFlow()
+    private val _hasNetwork = MutableStateFlow(false)
+    val hasNetwork: StateFlow<Boolean> = _hasNetwork.asStateFlow()
 
-    private var displayJob:   Job? = null
+    private val _dataRateBps = MutableStateFlow(0)
+    val dataRateBps: StateFlow<Int> = _dataRateBps.asStateFlow()
+
+    private var displayJob:  Job? = null
     private var countdownJob: Job? = null
     private var udpJob:       Job? = null
+    private var rateJob:      Job? = null
+    private var popupJob:     Job? = null
+
+    private var bytesSentThisSecond = 0
 
     init {
         imuRepository.start(sampleRateUs = 20_000)
@@ -66,42 +78,44 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         displayJob = viewModelScope.launch {
             while (true) {
                 _displaySample.value = imuRepository.latestSample.value
-                // Also refresh device IP in case Wi-Fi connected after app opened
-                _deviceIp.value = getDeviceIp()
+                _deviceIp.value      = getDeviceIp()
+                _hasNetwork.value    = isNetworkAvailable()
                 delay(100L)
             }
+        }
+    }
+
+    fun showPopup(message: String) {
+        popupJob?.cancel()
+        _popupMessage.value = message
+        popupJob = viewModelScope.launch {
+            delay(2_000L)
+            _popupMessage.value = ""
         }
     }
 
     fun startStreaming() {
         val cfg = settings.value
 
-        // ── Network check ──────────────────────────────────────────────────
-        val networkType = getNetworkType()
-        if (networkType == NetworkType.NONE) {
-            _statusMessage.value = "No network — connect to Wi-Fi or hotspot first"
-            _statusIsError.value = true
+        if (!isNetworkAvailable()) {
+            showPopup(appContext.getString(R.string.status_no_wifi))
+            return
+        }
+        if (!Validator.isReadyToStream(cfg.receiverIp, cfg.udpPort)) {
+            showPopup(appContext.getString(R.string.status_invalid_ip_port))
             return
         }
 
         viewModelScope.launch {
-            // Open UDP socket
             val opened = udpSender.open(cfg.receiverIp, cfg.udpPort)
             if (!opened) {
-                _statusMessage.value = "Invalid IP address: ${cfg.receiverIp}"
-                _statusIsError.value = true
+                showPopup(appContext.getString(R.string.status_cannot_connect, cfg.receiverIp))
                 return@launch
             }
 
-            val networkLabel = when (networkType) {
-                NetworkType.WIFI    -> "Wi-Fi"
-                NetworkType.HOTSPOT -> "Hotspot"
-                else                -> "Network"
-            }
-            _statusMessage.value = "Streaming via $networkLabel → ${cfg.receiverIp}:${cfg.udpPort}"
-            _statusIsError.value = false
+            _statusMessage.value =
+                "${appContext.getString(R.string.status_streaming_to)} ${cfg.receiverIp}:${cfg.udpPort}"
 
-            // Set stream state
             if (!cfg.isPro) {
                 _countdownSecs.value = cfg.runTimeSecs
                 _streamState.value   = StreamState.COUNTDOWN
@@ -116,13 +130,29 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
                 _streamState.value = StreamState.STREAMING
             }
 
-            // UDP send loop
+            bytesSentThisSecond = 0
             udpJob = viewModelScope.launch {
                 while (true) {
-                    val csv = imuRepository.latestSample.value.toCsv()
+                    // Build CSV with only enabled sensors
+                    val csv = imuRepository.latestSample.value.toCsv(
+                        accel   = cfg.enableAccelerometer,
+                        gyro    = cfg.enableGyroscope,
+                        mag     = cfg.enableMagnetometer,
+                        gravity = cfg.enableGravity && cfg.isPro,
+                        linear  = cfg.enableLinearAccel && cfg.isPro,
+                        rot     = cfg.enableRotation && cfg.isPro
+                    )
                     udpSender.send(csv)
-                    val delayMs = (1000f / cfg.sampleRateHz).toLong()
-                    delay(delayMs)
+                    bytesSentThisSecond += csv.length
+                    delay((1000f / cfg.sampleRateHz).toLong())
+                }
+            }
+
+            rateJob = viewModelScope.launch {
+                while (true) {
+                    delay(1_000L)
+                    _dataRateBps.value  = bytesSentThisSecond
+                    bytesSentThisSecond = 0
                 }
             }
         }
@@ -131,11 +161,13 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     fun stopStreaming() {
         countdownJob?.cancel(); countdownJob = null
         udpJob?.cancel();       udpJob       = null
+        rateJob?.cancel();      rateJob      = null
         udpSender.close()
         _streamState.value   = StreamState.IDLE
         _countdownSecs.value = 0
         _statusMessage.value = ""
-        _statusIsError.value = false
+        _dataRateBps.value   = 0
+        bytesSentThisSecond  = 0
     }
 
     fun toggleStreaming() {
@@ -148,31 +180,23 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         displayJob?.cancel()
         countdownJob?.cancel()
         udpJob?.cancel()
+        rateJob?.cancel()
+        popupJob?.cancel()
         udpSender.close()
         imuRepository.stop()
     }
 
-    // ── Network helpers ───────────────────────────────────────────────────
-
-    enum class NetworkType { NONE, WIFI, HOTSPOT, OTHER }
-
-    private fun getNetworkType(): NetworkType {
-        val cm = getApplication<Application>()
-            .getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
-        val network = cm.activeNetwork ?: return NetworkType.NONE
-        val caps    = cm.getNetworkCapabilities(network) ?: return NetworkType.NONE
-        return when {
-            caps.hasTransport(NetworkCapabilities.TRANSPORT_WIFI)     -> NetworkType.WIFI
-            caps.hasTransport(NetworkCapabilities.TRANSPORT_ETHERNET) -> NetworkType.WIFI
-            caps.hasTransport(NetworkCapabilities.TRANSPORT_CELLULAR) -> NetworkType.HOTSPOT
-            else -> NetworkType.OTHER
-        }
+    private fun isNetworkAvailable(): Boolean {
+        val cm = appContext.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
+        val caps = cm.getNetworkCapabilities(cm.activeNetwork ?: return false) ?: return false
+        return caps.hasTransport(NetworkCapabilities.TRANSPORT_WIFI) ||
+               caps.hasTransport(NetworkCapabilities.TRANSPORT_ETHERNET) ||
+               caps.hasTransport(NetworkCapabilities.TRANSPORT_CELLULAR)
     }
 
     private fun getDeviceIp(): String {
         try {
-            val interfaces = NetworkInterface.getNetworkInterfaces() ?: return "—"
-            for (iface in interfaces.asSequence()) {
+            for (iface in NetworkInterface.getNetworkInterfaces()?.asSequence() ?: return "—") {
                 if (!iface.isUp || iface.isLoopback) continue
                 for (addr in iface.inetAddresses.asSequence()) {
                     if (!addr.isLoopbackAddress && addr is Inet4Address)

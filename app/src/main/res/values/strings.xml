@@ -1,3 +1,111 @@
+<?xml version="1.0" encoding="utf-8"?>
 <resources>
+
+    <!-- App -->
     <string name="app_name">IMULink</string>
+
+    <!-- Home Screen -->
+    <string name="start_streaming">START STREAMING</string>
+    <string name="stop_streaming">STOP STREAMING</string>
+    <string name="this_device">This device:</string>
+
+    <!-- Sensor labels -->
+    <string name="sensor_accelerometer">ACCELEROMETER</string>
+    <string name="sensor_gyroscope">GYROSCOPE</string>
+    <string name="sensor_magnetometer">MAGNETOMETER</string>
+    <string name="sensor_gravity">GRAVITY</string>
+    <string name="sensor_linear_accel">LINEAR ACCEL</string>
+    <string name="sensor_rotation_vector">ROTATION VECTOR</string>
+
+    <!-- Sensor units -->
+    <string name="unit_ms2">m/s²</string>
+    <string name="unit_rads">rad/s</string>
+    <string name="unit_ut">µT</string>
+    <string name="unit_rad">rad</string>
+
+    <!-- Status messages -->
+    <string name="status_streaming_to">Streaming to:</string>
+    <string name="status_stop_streaming_settings">Stop streaming before changing settings</string>
+    <string name="status_no_wifi">Not connected to WiFi network</string>
+    <string name="status_invalid_ip_port">Please set valid Receiver IP/Port</string>
+    <string name="status_cannot_connect">Cannot open connection to %1$s</string>
+
+    <!-- Settings Screen -->
+    <string name="settings_title">SETTINGS</string>
+    <string name="settings_section_connection">CONNECTION</string>
+    <string name="settings_section_sampling">SAMPLING</string>
+    <string name="settings_section_sensor_info">SENSOR INFORMATION</string>
+    <string name="settings_section_app">APP</string>
+    <string name="settings_receiver_ip">Receiver IP</string>
+    <string name="settings_ip_placeholder">192.168.1.x</string>
+    <string name="settings_port">Port</string>
+    <string name="settings_port_placeholder">5005</string>
+    <string name="settings_invalid_ip">Invalid or broadcast IP</string>
+    <string name="settings_invalid_port">1024–65535</string>
+    <string name="settings_broadcast_warning">Broadcast addresses (x.x.x.0 / x.x.x.255) are not allowed.</string>
+    <string name="settings_sample_rate">Sample rate (Hz)</string>
+    <string name="settings_sample_rate_label">Sample rate (Hz)</string>
+    <string name="settings_sample_rate_pro_hint">Pro: enter any value between 1 and %1$d Hz</string>
+    <string name="settings_sample_rate_free_hint">Higher rates require Pro · Max sensor rate: %1$d Hz</string>
+    <string name="settings_save">SAVE</string>
+    <string name="settings_save_fix_errors">SAVE  (fix errors first)</string>
+    <string name="settings_version">Version</string>
+    <string name="settings_package">Package</string>
+    <string name="settings_license">License</string>
+    <string name="settings_license_pro">Pro (Unlimited)</string>
+    <string name="settings_license_free">Free (5 min limit)</string>
+
+    <!-- Sensor info labels -->
+    <string name="sensor_info_model">Model</string>
+    <string name="sensor_info_vendor">Vendor</string>
+    <string name="sensor_info_max_rate">Max rate</string>
+    <string name="sensor_info_range">Range</string>
+    <string name="sensor_info_resolution">Resolution</string>
+    <string name="sensor_info_not_available">Not available on this device</string>
+    <string name="sensor_info_hz">%1$d Hz</string>
+
+    <!-- Help Screen -->
+    <string name="help_title">Help &amp; Guide</string>
+    <string name="help_section_what">WHAT IS IMULINK?</string>
+    <string name="help_section_quickstart">QUICK START</string>
+    <string name="help_section_find_ip">FINDING YOUR COMPUTER\'S IP</string>
+    <string name="help_section_udp_format">UDP PACKET FORMAT</string>
+    <string name="help_section_python">PYTHON RECEIVER EXAMPLE</string>
+    <string name="help_section_free_pro">FREE vs PRO</string>
+    <string name="help_section_tips">TIPS</string>
+
+    <string name="help_what_body">IMULink streams raw IMU sensor data from your Android phone to any computer on the same Wi-Fi network using UDP. You can record or process the data in Python, MATLAB, C#, or any language that supports UDP sockets.</string>
+
+    <string name="help_step_1">Connect your phone and computer to the same Wi-Fi network.</string>
+    <string name="help_step_2">Open Settings and enter your computer\'s IP address and UDP port.</string>
+    <string name="help_step_3">Run the receiver script on your computer (see UDP Format below).</string>
+    <string name="help_step_4">Press START STREAMING on the home screen.</string>
+    <string name="help_step_5">Data will arrive at your computer at the configured sample rate.</string>
+
+    <string name="help_find_ip_mac">macOS / Linux:  open Terminal and type  ifconfig  — look for inet.</string>
+    <string name="help_find_ip_win">Windows:  open Command Prompt and type  ipconfig  — look for IPv4 Address.</string>
+    <string name="help_find_ip_phone">Your phone\'s own IP is shown at the bottom of the home screen.</string>
+
+    <string name="help_free_body">Free tier: streaming stops after 5 minutes. Sample rate capped at 50 Hz.</string>
+    <string name="help_pro_body">Pro (one-time purchase): unlimited streaming time and full sensor rate.</string>
+
+    <string name="help_tip_1">Use a 5 GHz Wi-Fi network for lowest latency.</string>
+    <string name="help_tip_2">Keep the phone plugged in during long recording sessions.</string>
+    <string name="help_tip_3">The ⚡ button engages top-speed mode (Pro only).</string>
+    <string name="help_tip_4">If packets are dropped, lower the sample rate in Settings.</string>
+    <string name="help_tip_5">Settings cannot be changed while streaming is active.</string>
+
+    <!-- Content descriptions for accessibility -->
+    <string name="cd_help">Help</string>
+    <string name="cd_settings">Settings</string>
+    <string name="cd_back">Back</string>
+    <string name="cd_pro_only">Pro only</string>
+    <string name="cd_top_speed">Top speed</string>
+
+    <string name="status_stop_before_settings">Stop streaming before changing settings</string>
+    <string name="settings_ip_address">IP Address</string>
+    <string name="settings_invalid_ip_short">Invalid IP</string>
+    <string name="settings_invalid_port_short">1024–65535</string>
+    <string name="settings_section_sensors">SENSORS TO STREAM</string>
+    <string name="settings_pro_rate_hint">Higher rates require Pro</string>
 </resources>
