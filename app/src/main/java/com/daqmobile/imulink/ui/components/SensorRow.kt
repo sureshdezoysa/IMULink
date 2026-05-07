@@ -25,16 +25,16 @@ fun SensorRow(
 ) {
     val valueColor: Color = when {
         isStreaming -> StreamGreen
-        dimmed      -> Color(0xFF666666)   // lighter — was 0xFF444444
+        dimmed      -> Color(0xFF555555)
         else        -> Color.White
     }
     val labelColor: Color = when {
-        dimmed -> Color(0xFF555555)        // lighter — was 0xFF3A3A3A
+        dimmed -> Color(0xFF444444)
         else   -> Color(0xFF888888)
     }
     val dividerColor: Color = when {
         isStreaming -> StreamGreen.copy(alpha = 0.4f)
-        dimmed      -> Color(0xFF3A3A3A)   // lighter — was 0xFF2A2A2A
+        dimmed      -> Color(0xFF333333)
         else        -> Color(0xFF3A3A3A)
     }
 

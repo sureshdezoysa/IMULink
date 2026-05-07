@@ -31,7 +31,7 @@
     <string name="status_cannot_connect">Cannot open connection to %1$s</string>
 
     <!-- Settings Screen -->
-    <string name="settings_title">SETTINGS</string>
+    <string name="settings_title">Settings</string>
     <string name="settings_section_connection">CONNECTION</string>
     <string name="settings_section_sampling">SAMPLING</string>
     <string name="settings_section_sensor_info">SENSOR INFORMATION</string>
@@ -108,4 +108,24 @@
     <string name="settings_invalid_port_short">1024–65535</string>
     <string name="settings_section_sensors">SENSORS TO STREAM</string>
     <string name="settings_pro_rate_hint">Higher rates require Pro</string>
+
+    <!-- Help screen additions -->
+    <string name="help_share">Share</string>
+    <string name="help_copy">Copy</string>
+    <string name="help_copied">Copied!</string>
+    <string name="help_coordinate_system">COORDINATE SYSTEM</string>
+    <string name="help_coordinate_body">IMULink uses the Android sensor coordinate system. With the phone face-up on a flat surface: X points toward the right edge, Y points toward the top edge, Z points upward away from the screen. All angular measurements follow the right-hand rule.</string>
+    <string name="help_section_data_format">COMPLETE DATA FORMAT REFERENCE</string>
+    <string name="help_full_format_body">Every UDP datagram is a single UTF-8 encoded CSV line followed by a newline character. Fields are always in the order shown below. If a sensor is disabled in Settings, its fields are omitted entirely — there are no placeholder zeros. The timestamp is always present as the first field.</string>
+    <string name="help_section_matlab">MATLAB RECEIVER EXAMPLE</string>
+    <string name="help_matlab_desc">Run this script in MATLAB to receive and display accelerometer data in real time:</string>
+    <string name="help_section_csharp">C# / UNITY RECEIVER EXAMPLE</string>
+    <string name="help_csharp_desc">Use this snippet in a Unity or .NET project to receive IMU packets:</string>
+    <string name="help_section_ai_prompt">USING THIS GUIDE WITH AI TOOLS</string>
+    <string name="help_ai_body">You can share this entire Help &amp; Guide page directly with an AI assistant such as Claude, ChatGPT, or Gemini to generate a complete custom receiver application. The AI will understand the UDP packet format, field names, units, and coordinate system and can write a full GUI application in Python, MATLAB, C#, Unity, or any other language you need. Use the Share button at the top of this page to export the guide as text.</string>
+    <string name="help_section_github">SOURCE CODE</string>
+    <string name="help_github_body">IMULink is open source. The full Android source code is available on GitHub. You are welcome to fork, modify, and redistribute under the project licence.</string>
+    <string name="help_github_url">https://github.com/sndezoysa/IMULink</string>
+    <string name="help_github_button">Open GitHub Repository</string>
+    <string name="help_tip_3_updated">Use the Share button on the Help page to send the full data format to an AI tool and generate a custom receiver.</string>
 </resources>

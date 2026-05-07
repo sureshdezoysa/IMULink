@@ -21,9 +21,7 @@ object Routes {
     const val SETTINGS           = "settings"
     const val HELP               = "help"
     const val HELP_FROM_SETTINGS = "help_from_settings"
-    const val SENSOR_DETAIL      = "sensor_detail/{sensorKey}"
-
-    fun sensorDetail(key: String) = "sensor_detail/$key"
+    const val SENSOR_INFO        = "sensor_info"
 }
 
 @Composable
@@ -66,7 +64,7 @@ fun IMULinkApp() {
                 viewModel      = viewModel,
                 onBack         = { navController.popBackStack() },
                 onHelp         = { navController.navigate(Routes.HELP_FROM_SETTINGS) },
-                onSensorDetail = { key -> navController.navigate(Routes.sensorDetail(key)) }
+                onSensorInfo   = { navController.navigate(Routes.SENSOR_INFO) }
             )
         }
 
@@ -107,7 +105,7 @@ fun IMULinkApp() {
         }
 
         composable(
-            route = Routes.SENSOR_DETAIL,
+            route = Routes.SENSOR_INFO,
             enterTransition = {
                 slideInHorizontally(initialOffsetX = { it }, animationSpec = tween(300))
             },
@@ -120,10 +118,8 @@ fun IMULinkApp() {
             popExitTransition = {
                 slideOutHorizontally(targetOffsetX = { it }, animationSpec = tween(300))
             }
-        ) { backStackEntry ->
-            val sensorKey = backStackEntry.arguments?.getString("sensorKey") ?: "Accelerometer"
+        ) {
             SensorDetailScreen(
-                sensorKey = sensorKey,
                 viewModel = viewModel,
                 onBack    = { navController.popBackStack() }
             )

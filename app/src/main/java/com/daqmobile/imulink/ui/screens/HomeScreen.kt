@@ -1,30 +1,27 @@
 package com.daqmobile.imulink.ui.screens
 
+import android.content.Intent
 import android.content.res.Configuration
+import android.net.Uri
 import androidx.compose.animation.*
-import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
-import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.HelpOutline
 import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import com.daqmobile.imulink.R
 import com.daqmobile.imulink.data.AppSettings
 import com.daqmobile.imulink.data.Validator
@@ -32,8 +29,12 @@ import com.daqmobile.imulink.sensor.AxisData
 import com.daqmobile.imulink.sensor.ImuSample
 import com.daqmobile.imulink.ui.MainViewModel
 import com.daqmobile.imulink.ui.StreamState
+import com.daqmobile.imulink.ui.components.PixelIconButton
 import com.daqmobile.imulink.ui.components.SensorRow
 import com.daqmobile.imulink.ui.theme.StreamGreen
+
+private const val PLAY_STORE_URL =
+    "https://play.google.com/store/apps/details?id=com.daqmobile.imulink"
 
 val StreamingGreen = StreamGreen
 
@@ -45,49 +46,50 @@ fun HomeScreen(
 ) {
     val sample        by viewModel.displaySample.collectAsState()
     val streamState   by viewModel.streamState.collectAsState()
-    val countdown     by viewModel.countdownSecs.collectAsState()
     val deviceIp      by viewModel.deviceIp.collectAsState()
     val settings      by viewModel.settings.collectAsState()
-    val statusMessage by viewModel.statusMessage.collectAsState()
     val popupMessage  by viewModel.popupMessage.collectAsState()
     val hasNetwork    by viewModel.hasNetwork.collectAsState()
     val dataRateBps   by viewModel.dataRateBps.collectAsState()
     val orientation    = LocalConfiguration.current.orientation
+    val context        = LocalContext.current
 
     val isStreaming = streamState != StreamState.IDLE
-    val canStream   = hasNetwork &&
-                      Validator.isValidIp(settings.receiverIp) &&
-                      Validator.isValidPort(settings.udpPort)
+    val maxSensorHz = viewModel.imuRepository.sensorInfos["Accelerometer"]
+        ?.takeIf { it.available }?.maxSampleRateHz ?: 200
+    val rateLabel = if (settings.sampleRateHz >= maxSensorHz)
+        "${settings.sampleRateHz} Hz (Max)" else "${settings.sampleRateHz} Hz"
+
+    val onPlayStore = {
+        context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(PLAY_STORE_URL)))
+    }
 
     if (orientation == Configuration.ORIENTATION_LANDSCAPE) {
         LandscapeLayout(
-            sample, streamState, countdown, deviceIp,
-            settings, statusMessage, popupMessage,
-            isStreaming, canStream, dataRateBps,
+            sample, isStreaming, deviceIp, rateLabel, settings,
+            popupMessage, dataRateBps,
             { viewModel.toggleStreaming() },
             { viewModel.showPopup(it) },
-            onNavigateToSettings, onNavigateToHelp
+            onNavigateToSettings, onNavigateToHelp, onPlayStore
         )
     } else {
         PortraitLayout(
-            sample, streamState, countdown, deviceIp,
-            settings, statusMessage, popupMessage,
-            isStreaming, canStream, dataRateBps,
+            sample, isStreaming, deviceIp, rateLabel, settings,
+            popupMessage, dataRateBps,
             { viewModel.toggleStreaming() },
             { viewModel.showPopup(it) },
-            onNavigateToSettings, onNavigateToHelp
+            onNavigateToSettings, onNavigateToHelp, onPlayStore
         )
     }
 }
 
 @Composable
 private fun PortraitLayout(
-    sample: ImuSample, streamState: StreamState, countdown: Int,
-    deviceIp: String, settings: AppSettings,
-    statusMessage: String, popupMessage: String,
-    isStreaming: Boolean, canStream: Boolean, dataRateBps: Int,
+    sample: ImuSample, isStreaming: Boolean,
+    deviceIp: String, rateLabel: String,
+    settings: AppSettings, popupMessage: String, dataRateBps: Int,
     onStartStop: () -> Unit, onShowPopup: (String) -> Unit,
-    onSettings: () -> Unit, onHelp: () -> Unit
+    onSettings: () -> Unit, onHelp: () -> Unit, onPlayStore: () -> Unit
 ) {
     Column(
         modifier = Modifier
@@ -96,27 +98,25 @@ private fun PortraitLayout(
             .navigationBarsPadding()
             .padding(horizontal = 20.dp)
     ) {
-        TopBar(onSettings, onHelp)
+        TopBar(onSettings, onHelp, onPlayStore)
         Spacer(Modifier.height(12.dp))
         Column(modifier = Modifier.weight(1f).verticalScroll(rememberScrollState())) {
             SensorBlock(sample, settings, isStreaming)
         }
         BottomControls(
-            streamState, countdown, deviceIp, settings.isPro,
-            statusMessage, popupMessage, isStreaming, canStream,
-            dataRateBps, onStartStop, onShowPopup
+            isStreaming, deviceIp, rateLabel, settings,
+            popupMessage, dataRateBps, onStartStop, onShowPopup
         )
     }
 }
 
 @Composable
 private fun LandscapeLayout(
-    sample: ImuSample, streamState: StreamState, countdown: Int,
-    deviceIp: String, settings: AppSettings,
-    statusMessage: String, popupMessage: String,
-    isStreaming: Boolean, canStream: Boolean, dataRateBps: Int,
+    sample: ImuSample, isStreaming: Boolean,
+    deviceIp: String, rateLabel: String,
+    settings: AppSettings, popupMessage: String, dataRateBps: Int,
     onStartStop: () -> Unit, onShowPopup: (String) -> Unit,
-    onSettings: () -> Unit, onHelp: () -> Unit
+    onSettings: () -> Unit, onHelp: () -> Unit, onPlayStore: () -> Unit
 ) {
     Row(
         modifier = Modifier
@@ -129,7 +129,7 @@ private fun LandscapeLayout(
                 .weight(1f).fillMaxHeight()
                 .padding(start = 20.dp, end = 16.dp)
         ) {
-            TopBar(onSettings, onHelp)
+            TopBar(onSettings, onHelp, onPlayStore)
             Spacer(Modifier.height(8.dp))
             Column(modifier = Modifier.weight(1f).verticalScroll(rememberScrollState())) {
                 SensorBlock(sample, settings, isStreaming)
@@ -149,111 +149,79 @@ private fun LandscapeLayout(
         ) {
             Spacer(Modifier.weight(1f))
             BottomControls(
-                streamState, countdown, deviceIp, settings.isPro,
-                statusMessage, popupMessage, isStreaming, canStream,
-                dataRateBps, onStartStop, onShowPopup
+                isStreaming, deviceIp, rateLabel, settings,
+                popupMessage, dataRateBps, onStartStop, onShowPopup
             )
         }
     }
 }
 
-/**
- * Sensor display rules:
- * - Free tier:  last 3 sensors always grayed (never green, never white)
- * - Pro tier:   disabled sensors grayed, enabled+streaming = green
- */
 @Composable
 private fun SensorBlock(
-    sample: ImuSample,
-    settings: AppSettings,
-    isStreaming: Boolean
+    sample: ImuSample, settings: AppSettings, isStreaming: Boolean
 ) {
-    // Helper: determine color state for each sensor
-    fun activeFor(enabled: Boolean, proLocked: Boolean): Boolean {
-        if (proLocked && !settings.isPro) return false  // locked for free users
-        if (!enabled) return false                       // user unchecked it
-        return isStreaming
-    }
-
-    fun dimFor(enabled: Boolean, proLocked: Boolean): Boolean {
-        if (proLocked && !settings.isPro) return true
-        if (!enabled) return true
-        return false
-    }
-
-    SensorRow(
-        stringResource(R.string.sensor_accelerometer),
-        stringResource(R.string.unit_ms2),
-        sample.accelerometer,
-        isStreaming = activeFor(settings.enableAccelerometer, false),
-        dimmed      = dimFor(settings.enableAccelerometer, false)
-    )
+    SensorRow(stringResource(R.string.sensor_accelerometer),
+        stringResource(R.string.unit_ms2), sample.accelerometer,
+        isStreaming = isStreaming && settings.enableAccelerometer,
+        dimmed      = !settings.enableAccelerometer)
     Spacer(Modifier.height(4.dp))
-    SensorRow(
-        stringResource(R.string.sensor_gyroscope),
-        stringResource(R.string.unit_rads),
-        sample.gyroscope,
-        isStreaming = activeFor(settings.enableGyroscope, false),
-        dimmed      = dimFor(settings.enableGyroscope, false)
-    )
+    SensorRow(stringResource(R.string.sensor_gyroscope),
+        stringResource(R.string.unit_rads), sample.gyroscope,
+        isStreaming = isStreaming && settings.enableGyroscope,
+        dimmed      = !settings.enableGyroscope)
     Spacer(Modifier.height(4.dp))
-    SensorRow(
-        stringResource(R.string.sensor_magnetometer),
-        stringResource(R.string.unit_ut),
-        sample.magnetometer,
-        isStreaming = activeFor(settings.enableMagnetometer, false),
-        dimmed      = dimFor(settings.enableMagnetometer, false)
-    )
+    SensorRow(stringResource(R.string.sensor_magnetometer),
+        stringResource(R.string.unit_ut), sample.magnetometer,
+        isStreaming = isStreaming && settings.enableMagnetometer,
+        dimmed      = !settings.enableMagnetometer)
     Spacer(Modifier.height(4.dp))
-    SensorRow(
-        stringResource(R.string.sensor_gravity),
-        stringResource(R.string.unit_ms2),
-        sample.gravity,
-        isStreaming = activeFor(settings.enableGravity, proLocked = true),
-        dimmed      = dimFor(settings.enableGravity, proLocked = true)
-    )
+    SensorRow(stringResource(R.string.sensor_gravity),
+        stringResource(R.string.unit_ms2), sample.gravity,
+        isStreaming = isStreaming && settings.enableGravity,
+        dimmed      = !settings.enableGravity)
     Spacer(Modifier.height(4.dp))
-    SensorRow(
-        stringResource(R.string.sensor_linear_accel),
-        stringResource(R.string.unit_ms2),
-        sample.linearAcceleration,
-        isStreaming = activeFor(settings.enableLinearAccel, proLocked = true),
-        dimmed      = dimFor(settings.enableLinearAccel, proLocked = true)
-    )
+    SensorRow(stringResource(R.string.sensor_linear_accel),
+        stringResource(R.string.unit_ms2), sample.linearAcceleration,
+        isStreaming = isStreaming && settings.enableLinearAccel,
+        dimmed      = !settings.enableLinearAccel)
     Spacer(Modifier.height(4.dp))
     SensorRow(
         stringResource(R.string.sensor_rotation_vector),
         stringResource(R.string.unit_rad),
         AxisData(sample.rotation.x, sample.rotation.y, sample.rotation.z),
-        isStreaming = activeFor(settings.enableRotation, proLocked = true),
-        dimmed      = dimFor(settings.enableRotation, proLocked = true)
-    )
+        isStreaming = isStreaming && settings.enableRotation,
+        dimmed      = !settings.enableRotation)
 }
 
 @Composable
-private fun TopBar(onSettings: () -> Unit, onHelp: () -> Unit) {
+private fun TopBar(
+    onSettings: () -> Unit,
+    onHelp: () -> Unit,
+    onPlayStore: () -> Unit
+) {
     Row(
         modifier = Modifier.fillMaxWidth().padding(top = 12.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        // Tappable title → Help
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
+        Text(
+            text     = stringResource(R.string.app_name),
+            style    = MaterialTheme.typography.headlineLarge,
+            color    = MaterialTheme.colorScheme.onBackground,
             modifier = Modifier
                 .weight(1f)
-                .clip(MaterialTheme.shapes.medium)
                 .clickable(
                     interactionSource = remember { MutableInteractionSource() },
                     indication        = null
-                ) { onHelp() }
-        ) {
-            Text(
-                text  = stringResource(R.string.app_name),
-                style = MaterialTheme.typography.headlineLarge,
-                color = MaterialTheme.colorScheme.onBackground
-            )
-        }
-        AnimatedIconButton(
+                ) { onPlayStore() }
+        )
+
+        PixelIconButton(
+            icon               = Icons.Outlined.HelpOutline,
+            contentDescription = stringResource(R.string.cd_help),
+            onClick            = onHelp
+        )
+        Spacer(Modifier.width(8.dp))
+        PixelIconButton(
             icon               = Icons.Outlined.Settings,
             contentDescription = stringResource(R.string.cd_settings),
             onClick            = onSettings
@@ -262,51 +230,10 @@ private fun TopBar(onSettings: () -> Unit, onHelp: () -> Unit) {
 }
 
 @Composable
-private fun AnimatedIconButton(
-    icon: ImageVector,
-    contentDescription: String,
-    onClick: () -> Unit
-) {
-    var pressed by remember { mutableStateOf(false) }
-    val scale   by animateFloatAsState(
-        targetValue   = if (pressed) 0.78f else 1f,
-        animationSpec = tween(120), label = "scale"
-    )
-    val bgAlpha by animateFloatAsState(
-        targetValue   = if (pressed) 0.18f else 0f,
-        animationSpec = tween(120), label = "bg"
-    )
-    Box(
-        contentAlignment = Alignment.Center,
-        modifier = Modifier
-            .size(48.dp)
-            .scale(scale)
-            .clip(CircleShape)
-            .background(Color.White.copy(alpha = bgAlpha))
-            .clickable(
-                interactionSource = remember { MutableInteractionSource() },
-                indication        = null
-            ) { onClick() }
-    ) {
-        Icon(
-            imageVector        = icon,
-            contentDescription = contentDescription,
-            tint               = Color.White,
-            modifier           = Modifier.size(26.dp)
-        )
-    }
-    LaunchedEffect(pressed) {
-        if (pressed) { kotlinx.coroutines.delay(180); pressed = false }
-    }
-}
-
-@Composable
 private fun BottomControls(
-    streamState: StreamState, countdown: Int,
-    deviceIp: String, isPro: Boolean,
-    statusMessage: String, popupMessage: String,
-    isStreaming: Boolean, canStream: Boolean, dataRateBps: Int,
-    onStartStop: () -> Unit, onShowPopup: (String) -> Unit
+    isStreaming: Boolean, deviceIp: String, rateLabel: String,
+    settings: AppSettings, popupMessage: String,
+    dataRateBps: Int, onStartStop: () -> Unit, onShowPopup: (String) -> Unit
 ) {
     Column {
         AnimatedVisibility(
@@ -328,63 +255,58 @@ private fun BottomControls(
             }
         }
 
-        if (statusMessage.isNotEmpty()) {
-            val display = if (dataRateBps > 0)
-                "$statusMessage  ·  ${formatDataRate(dataRateBps)}" else statusMessage
+        if (Validator.isValidIp(settings.receiverIp) &&
+            Validator.isValidPort(settings.udpPort)) {
+            Row(
+                modifier = Modifier.fillMaxWidth().padding(bottom = 6.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment     = Alignment.CenterVertically
+            ) {
+                Text(
+                    text  = "Receiver:  ${settings.receiverIp}:${settings.udpPort}",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = if (isStreaming) StreamingGreen
+                            else MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                if (isStreaming && dataRateBps > 0) {
+                    Text(
+                        text  = formatDataRate(dataRateBps),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = StreamingGreen
+                    )
+                }
+            }
+        }
+
+        Button(
+            onClick  = onStartStop,
+            modifier = Modifier.fillMaxWidth().height(64.dp),
+            shape    = MaterialTheme.shapes.medium,
+            colors   = ButtonDefaults.buttonColors(
+                containerColor = if (isStreaming) StreamingGreen
+                                 else MaterialTheme.colorScheme.surfaceVariant
+            )
+        ) {
             Text(
-                text     = display,
-                style    = MaterialTheme.typography.bodyMedium,
-                color    = StreamingGreen,
-                modifier = Modifier.fillMaxWidth().padding(bottom = 6.dp)
+                text  = if (isStreaming) stringResource(R.string.stop_streaming)
+                        else stringResource(R.string.start_streaming),
+                style = MaterialTheme.typography.labelLarge,
+                color = if (isStreaming) Color.Black
+                        else MaterialTheme.colorScheme.onBackground
             )
         }
 
         Row(
-            modifier = Modifier.fillMaxWidth().padding(bottom = 4.dp),
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            Button(
-                onClick  = { },
-                enabled  = isPro,
-                modifier = Modifier.size(64.dp),
-                shape    = MaterialTheme.shapes.medium,
-                colors   = ButtonDefaults.buttonColors(
-                    containerColor         = MaterialTheme.colorScheme.surfaceVariant,
-                    disabledContainerColor = MaterialTheme.colorScheme.surfaceVariant
-                ),
-                contentPadding = PaddingValues(0.dp)
-            ) {
-                Text("⚡", fontSize = 22.sp,
-                    color = if (isPro) MaterialTheme.colorScheme.onBackground
-                            else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.3f))
-            }
-
-            Button(
-                onClick  = onStartStop,
-                modifier = Modifier.weight(1f).height(64.dp),
-                shape    = MaterialTheme.shapes.medium,
-                colors   = ButtonDefaults.buttonColors(
-                    containerColor = if (isStreaming) StreamingGreen
-                                    else MaterialTheme.colorScheme.surfaceVariant
-                )
-            ) {
-                val label = when {
-                    !isStreaming  -> stringResource(R.string.start_streaming)
-                    countdown > 0 -> "STOP  ${formatCountdown(countdown)}"
-                    else          -> stringResource(R.string.stop_streaming)
-                }
-                Text(label, style = MaterialTheme.typography.labelLarge,
-                    color = if (isStreaming) Color.Black
-                            else MaterialTheme.colorScheme.onBackground)
-            }
-        }
-
-        Row(
-            modifier = Modifier.fillMaxWidth().padding(top = 4.dp, bottom = 8.dp),
-            horizontalArrangement = Arrangement.Center
+            modifier = Modifier.fillMaxWidth().padding(top = 6.dp, bottom = 8.dp),
+            horizontalArrangement = Arrangement.SpaceBetween
         ) {
             Text(
                 text  = "${stringResource(R.string.this_device)}  $deviceIp",
+                style = MaterialTheme.typography.bodyLarge,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            Text(
+                text  = rateLabel,
                 style = MaterialTheme.typography.bodyLarge,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
@@ -392,7 +314,6 @@ private fun BottomControls(
     }
 }
 
-private fun formatCountdown(secs: Int) = "%d:%02d".format(secs / 60, secs % 60)
 private fun formatDataRate(bps: Int): String = when {
     bps >= 1_000_000 -> "${"%.1f".format(bps / 1_000_000f)} MB/s"
     bps >= 1_000     -> "${"%.1f".format(bps / 1_000f)} KB/s"

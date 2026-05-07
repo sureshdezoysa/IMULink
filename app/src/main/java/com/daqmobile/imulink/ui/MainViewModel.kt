@@ -24,7 +24,7 @@ import kotlinx.coroutines.launch
 import java.net.Inet4Address
 import java.net.NetworkInterface
 
-enum class StreamState { IDLE, STREAMING, COUNTDOWN }
+enum class StreamState { IDLE, STREAMING }
 
 class MainViewModel(app: Application) : AndroidViewModel(app) {
 
@@ -42,9 +42,6 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     private val _streamState = MutableStateFlow(StreamState.IDLE)
     val streamState: StateFlow<StreamState> = _streamState.asStateFlow()
 
-    private val _countdownSecs = MutableStateFlow(0)
-    val countdownSecs: StateFlow<Int> = _countdownSecs.asStateFlow()
-
     private val _deviceIp = MutableStateFlow(getDeviceIp())
     val deviceIp: StateFlow<String> = _deviceIp.asStateFlow()
 
@@ -61,10 +58,9 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     val dataRateBps: StateFlow<Int> = _dataRateBps.asStateFlow()
 
     private var displayJob:  Job? = null
-    private var countdownJob: Job? = null
-    private var udpJob:       Job? = null
-    private var rateJob:      Job? = null
-    private var popupJob:     Job? = null
+    private var udpJob:      Job? = null
+    private var rateJob:     Job? = null
+    private var popupJob:    Job? = null
 
     private var bytesSentThisSecond = 0
 
@@ -113,38 +109,33 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
                 return@launch
             }
 
-            _statusMessage.value =
-                "${appContext.getString(R.string.status_streaming_to)} ${cfg.receiverIp}:${cfg.udpPort}"
+            _streamState.value = StreamState.STREAMING
 
-            if (!cfg.isPro) {
-                _countdownSecs.value = cfg.runTimeSecs
-                _streamState.value   = StreamState.COUNTDOWN
-                countdownJob = viewModelScope.launch {
-                    while (_countdownSecs.value > 0) {
-                        delay(1_000L)
-                        _countdownSecs.value -= 1
-                    }
-                    stopStreaming()
-                }
-            } else {
-                _streamState.value = StreamState.STREAMING
-            }
+            // Use configured sample rate
+            // sampleRateHz = 0 means "max" — use SENSOR_DELAY_FASTEST
+            val sampleRateUs = if (cfg.sampleRateHz <= 0) 0
+                               else (1_000_000f / cfg.sampleRateHz).toInt()
+
+            imuRepository.stop()
+            imuRepository.start(sampleRateUs = sampleRateUs)
 
             bytesSentThisSecond = 0
+            val udpDelayMs = if (cfg.sampleRateHz <= 0) 1L
+                             else (1000f / cfg.sampleRateHz).toLong()
+
             udpJob = viewModelScope.launch {
                 while (true) {
-                    // Build CSV with only enabled sensors
                     val csv = imuRepository.latestSample.value.toCsv(
                         accel   = cfg.enableAccelerometer,
                         gyro    = cfg.enableGyroscope,
                         mag     = cfg.enableMagnetometer,
-                        gravity = cfg.enableGravity && cfg.isPro,
-                        linear  = cfg.enableLinearAccel && cfg.isPro,
-                        rot     = cfg.enableRotation && cfg.isPro
+                        gravity = cfg.enableGravity,
+                        linear  = cfg.enableLinearAccel,
+                        rot     = cfg.enableRotation
                     )
                     udpSender.send(csv)
                     bytesSentThisSecond += csv.length
-                    delay((1000f / cfg.sampleRateHz).toLong())
+                    delay(udpDelayMs)
                 }
             }
 
@@ -159,15 +150,15 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     fun stopStreaming() {
-        countdownJob?.cancel(); countdownJob = null
-        udpJob?.cancel();       udpJob       = null
-        rateJob?.cancel();      rateJob      = null
+        udpJob?.cancel();  udpJob  = null
+        rateJob?.cancel(); rateJob = null
         udpSender.close()
         _streamState.value   = StreamState.IDLE
-        _countdownSecs.value = 0
-        _statusMessage.value = ""
         _dataRateBps.value   = 0
         bytesSentThisSecond  = 0
+        // Restart sensors at display rate
+        imuRepository.stop()
+        imuRepository.start(sampleRateUs = 20_000)
     }
 
     fun toggleStreaming() {
@@ -178,7 +169,6 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     override fun onCleared() {
         super.onCleared()
         displayJob?.cancel()
-        countdownJob?.cancel()
         udpJob?.cancel()
         rateJob?.cancel()
         popupJob?.cancel()
@@ -187,7 +177,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     private fun isNetworkAvailable(): Boolean {
-        val cm = appContext.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
+        val cm   = appContext.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
         val caps = cm.getNetworkCapabilities(cm.activeNetwork ?: return false) ?: return false
         return caps.hasTransport(NetworkCapabilities.TRANSPORT_WIFI) ||
                caps.hasTransport(NetworkCapabilities.TRANSPORT_ETHERNET) ||
