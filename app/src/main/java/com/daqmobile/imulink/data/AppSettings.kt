@@ -5,6 +5,7 @@ import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.*
 import androidx.datastore.preferences.preferencesDataStore
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 
 private val Context.dataStore: DataStore<Preferences>
@@ -24,6 +25,7 @@ data class AppSettings(
 )
 
 object SettingsKeys {
+    val ONBOARDING_DONE = booleanPreferencesKey("onboarding_done")
     val RECEIVER_IP           = stringPreferencesKey("receiver_ip")
     val UDP_PORT              = intPreferencesKey("udp_port")
     val SAMPLE_RATE_HZ        = intPreferencesKey("sample_rate_hz")
@@ -78,6 +80,16 @@ class SettingsRepository(private val context: Context) {
             enableLinearAccel   = p[SettingsKeys.ENABLE_LINEAR_ACCEL]  ?: true,
             enableRotation      = p[SettingsKeys.ENABLE_ROTATION]      ?: true
         )
+    }
+
+    suspend fun isOnboardingDone(): Boolean {
+        return context.dataStore.data.first()[SettingsKeys.ONBOARDING_DONE] ?: false
+    }
+
+    suspend fun setOnboardingDone() {
+        context.dataStore.edit { p ->
+            p[SettingsKeys.ONBOARDING_DONE] = true
+        }
     }
 
     suspend fun save(s: AppSettings) {
