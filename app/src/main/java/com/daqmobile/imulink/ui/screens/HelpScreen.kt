@@ -36,10 +36,10 @@ fun HelpScreen(
     viewModel: MainViewModel,
     onBack: () -> Unit
 ) {
-    val streamState   by viewModel.streamState.collectAsState()
-    val statusMessage by viewModel.statusMessage.collectAsState()
-    val dataRateBps   by viewModel.dataRateBps.collectAsState()
-    val isStreaming    = streamState != StreamState.IDLE
+    val streamState by viewModel.streamState.collectAsState()
+    val settings    by viewModel.settings.collectAsState()
+    val dataRateBps by viewModel.dataRateBps.collectAsState()
+    val isStreaming  = streamState != StreamState.IDLE
     val context        = LocalContext.current
 
     // Build the full shareable text from all string resources
@@ -84,10 +84,11 @@ fun HelpScreen(
 
                 // Streaming banner
                 AnimatedVisibility(
-                    visible = isStreaming && statusMessage.isNotEmpty(),
+                    visible = isStreaming,
                     enter   = expandVertically(tween(300)) + fadeIn(tween(300)),
                     exit    = shrinkVertically(tween(300)) + fadeOut(tween(300))
                 ) {
+                    val rateText = if (dataRateBps > 0) "  ·  ${formatRate(dataRateBps)}" else ""
                     Surface(
                         color    = StreamingGreen.copy(alpha = 0.15f),
                         modifier = Modifier.fillMaxWidth()
@@ -100,9 +101,11 @@ fun HelpScreen(
                         ) {
                             Text("● ", style = MaterialTheme.typography.bodyMedium,
                                 color = StreamingGreen)
-                            Text(statusMessage,
+                            Text(
+                                "Streaming to: ${settings.receiverIp}:${settings.udpPort}$rateText",
                                 style = MaterialTheme.typography.bodyMedium,
-                                color = StreamingGreen)
+                                color = StreamingGreen
+                            )
                         }
                     }
                 }
