@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>IMULink — Privacy Policy</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    background: #000000;
+    color: #FFFFFF;
+    font-family: 'Courier New', Courier, monospace;
+    font-size: 15px;
+    line-height: 1.8;
+    padding: 40px 20px;
+  }
+  .container {
+    max-width: 720px;
+    margin: 0 auto;
+  }
+  h1 {
+    font-size: 32px;
+    font-weight: 700;
+    letter-spacing: -0.5px;
+    margin-bottom: 4px;
+  }
+  .subtitle {
+    color: #888888;
+    font-size: 13px;
+    margin-bottom: 48px;
+  }
+  h2 {
+    font-size: 11px;
+    letter-spacing: 2px;
+    color: #888888;
+    text-transform: uppercase;
+    margin-top: 40px;
+    margin-bottom: 8px;
+  }
+  .divider {
+    border: none;
+    border-top: 0.5px solid #222222;
+    margin-bottom: 16px;
+  }
+  p {
+    color: #CCCCCC;
+    margin-bottom: 16px;
+  }
+  ul {
+    color: #CCCCCC;
+    padding-left: 20px;
+    margin-bottom: 16px;
+  }
+  ul li {
+    margin-bottom: 6px;
+  }
+  .highlight {
+    color: #FFFFFF;
+    font-weight: 700;
+  }
+  .footer {
+    margin-top: 64px;
+    padding-top: 24px;
+    border-top: 0.5px solid #222222;
+    color: #444444;
+    font-size: 12px;
+  }
+  a { color: #888888; text-decoration: none; }
+  a:hover { color: #FFFFFF; }
+</style>
+</head>
+<body>
+<div class="container">
+
+  <h1>IMULink</h1>
+  <p class="subtitle">Privacy Policy &nbsp;·&nbsp; Effective date: May 2026</p>
+
+  <h2>Overview</h2>
+  <hr class="divider">
+  <p>
+    IMULink is a free, open-source Android application that streams IMU sensor data
+    from your phone to a computer on the same local network using UDP.
+    <span class="highlight">IMULink does not collect, store, or transmit any personal data
+    to any server, cloud service, or third party.</span>
+  </p>
+
+  <h2>Data collected</h2>
+  <hr class="divider">
+  <p>IMULink does <strong>not</strong> collect any of the following:</p>
+  <ul>
+    <li>Personal identification information</li>
+    <li>Location data</li>
+    <li>Device identifiers</li>
+    <li>Usage analytics or crash reports</li>
+    <li>Sensor data (sensor data is sent directly from your phone to your own computer — it never passes through any external server)</li>
+  </ul>
+
+  <h2>Sensor data streaming</h2>
+  <hr class="divider">
+  <p>
+    When you press START STREAMING, IMULink reads sensor data from your phone's
+    hardware (accelerometer, gyroscope, magnetometer, and optionally gravity,
+    linear acceleration, and rotation vector) and sends it as UDP packets
+    directly to the IP address and port you configure in Settings.
+  </p>
+  <p>
+    This data transmission occurs entirely within your local Wi-Fi network.
+    IMULink has no servers, no backend, and no internet connectivity is required
+    or used during streaming.
+  </p>
+
+  <h2>Local storage</h2>
+  <hr class="divider">
+  <p>
+    IMULink stores the following settings locally on your device using
+    Android's DataStore (a local key-value store):
+  </p>
+  <ul>
+    <li>Receiver IP address and UDP port</li>
+    <li>Sample rate preference</li>
+    <li>Sensor selection preferences</li>
+    <li>Onboarding completion flag</li>
+  </ul>
+  <p>
+    This data never leaves your device and is only used to restore your
+    preferences between app sessions.
+  </p>
+
+  <h2>Permissions</h2>
+  <hr class="divider">
+  <p>IMULink requests the following Android permissions:</p>
+  <ul>
+    <li><span class="highlight">INTERNET</span> — required to send UDP packets to your computer</li>
+    <li><span class="highlight">ACCESS_NETWORK_STATE / ACCESS_WIFI_STATE</span> — to check Wi-Fi connectivity and display your device's IP address</li>
+    <li><span class="highlight">FOREGROUND_SERVICE / FOREGROUND_SERVICE_DATA_SYNC</span> — to keep streaming active when the screen is off</li>
+    <li><span class="highlight">POST_NOTIFICATIONS</span> — to show the streaming status notification with a STOP button</li>
+  </ul>
+  <p>
+    No permission is used to collect or transmit personal data.
+  </p>
+
+  <h2>Third-party services</h2>
+  <hr class="divider">
+  <p>
+    IMULink does not integrate any third-party SDKs, analytics services,
+    advertising networks, or crash reporting tools.
+    The app contains no ads and makes no in-app purchases.
+  </p>
+
+  <h2>Children's privacy</h2>
+  <hr class="divider">
+  <p>
+    IMULink does not collect any data from any user, including children.
+    The app is intended for scientific and research use and is appropriate
+    for all ages.
+  </p>
+
+  <h2>Changes to this policy</h2>
+  <hr class="divider">
+  <p>
+    If this privacy policy changes in a future version of the app, the updated
+    policy will be published at this URL and the effective date will be updated.
+    Continued use of the app after changes constitutes acceptance of the
+    updated policy.
+  </p>
+
+  <h2>Contact</h2>
+  <hr class="divider">
+  <p>
+    If you have any questions about this privacy policy or IMULink,
+    please contact:
+  </p>
+  <ul>
+    <li>Developer: Suresh De Zoysa</li>
+    <li>Organisation: DAQMobile</li>
+    <li>App package: com.daqmobile.imulink</li>
+  </ul>
+
+  <div class="footer">
+    IMULink &nbsp;·&nbsp; Version 1.0.0 &nbsp;·&nbsp;
+    Free — Open for Science &nbsp;·&nbsp;
+    com.daqmobile.imulink
+  </div>
+
+</div>
+</body>
+</html>
