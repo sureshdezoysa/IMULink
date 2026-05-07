@@ -2,9 +2,7 @@ package com.daqmobile.imulink.ui
 
 import androidx.compose.animation.*
 import androidx.compose.animation.core.tween
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.*
 import androidx.compose.ui.res.stringResource
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.compose.NavHost
@@ -15,6 +13,8 @@ import com.daqmobile.imulink.ui.screens.HomeScreen
 import com.daqmobile.imulink.ui.screens.SettingsScreen
 import com.daqmobile.imulink.ui.screens.HelpScreen
 import com.daqmobile.imulink.ui.screens.SensorDetailScreen
+import com.daqmobile.imulink.ui.screens.OnboardingScreen
+import kotlinx.coroutines.launch
 
 object Routes {
     const val HOME               = "home"
@@ -31,7 +31,31 @@ fun IMULinkApp() {
     val streamState by viewModel.streamState.collectAsState()
     val isStreaming  = streamState != StreamState.IDLE
     val stopFirst    = stringResource(R.string.status_stop_before_settings)
+    val scope        = rememberCoroutineScope()
 
+    // Check onboarding state
+    var showOnboarding by remember { mutableStateOf<Boolean?>(null) }
+
+    LaunchedEffect(Unit) {
+        showOnboarding = !viewModel.settingsRepository.isOnboardingDone()
+    }
+
+    // Wait until we know whether to show onboarding
+    if (showOnboarding == null) return
+
+    if (showOnboarding == true) {
+        OnboardingScreen(
+            onFinish = {
+                scope.launch {
+                    viewModel.settingsRepository.setOnboardingDone()
+                    showOnboarding = false
+                }
+            }
+        )
+        return
+    }
+
+    // Main app navigation
     NavHost(navController = navController, startDestination = Routes.HOME) {
 
         composable(Routes.HOME) {
@@ -61,10 +85,10 @@ fun IMULinkApp() {
             }
         ) {
             SettingsScreen(
-                viewModel      = viewModel,
-                onBack         = { navController.popBackStack() },
-                onHelp         = { navController.navigate(Routes.HELP_FROM_SETTINGS) },
-                onSensorInfo   = { navController.navigate(Routes.SENSOR_INFO) }
+                viewModel    = viewModel,
+                onBack       = { navController.popBackStack() },
+                onHelp       = { navController.navigate(Routes.HELP_FROM_SETTINGS) },
+                onSensorInfo = { navController.navigate(Routes.SENSOR_INFO) }
             )
         }
 
