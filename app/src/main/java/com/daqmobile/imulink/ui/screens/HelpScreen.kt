@@ -383,10 +383,7 @@ private fun buildShareText(context: Context): String = with(context) {
         appendLine(getString(R.string.help_section_ai_prompt))
         appendLine(getString(R.string.help_ai_body))
         appendLine()
-        appendLine(getString(R.string.help_section_github))
-        appendLine(getString(R.string.help_github_body))
-        appendLine(getString(R.string.help_github_url))
-        appendLine()
+
         appendLine(getString(R.string.help_section_tips))
         appendLine("• ${getString(R.string.help_tip_1)}")
         appendLine("• ${getString(R.string.help_tip_2)}")
