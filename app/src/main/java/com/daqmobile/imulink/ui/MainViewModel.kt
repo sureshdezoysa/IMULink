@@ -1,15 +1,20 @@
 package com.daqmobile.imulink.ui
 
 import android.app.Application
+import android.content.BroadcastReceiver
 import android.content.Context
+import android.content.Intent
+import android.content.IntentFilter
 import android.net.ConnectivityManager
 import android.net.NetworkCapabilities
+import android.os.Build
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.daqmobile.imulink.R
 import com.daqmobile.imulink.data.AppSettings
 import com.daqmobile.imulink.data.SettingsRepository
 import com.daqmobile.imulink.data.Validator
+import com.daqmobile.imulink.network.StreamingService
 import com.daqmobile.imulink.network.UdpSender
 import com.daqmobile.imulink.sensor.ImuRepository
 import com.daqmobile.imulink.sensor.ImuSample
@@ -48,25 +53,46 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     private val _popupMessage = MutableStateFlow("")
     val popupMessage: StateFlow<String> = _popupMessage.asStateFlow()
 
-    private val _statusMessage = MutableStateFlow("")
-    val statusMessage: StateFlow<String> = _statusMessage.asStateFlow()
-
     private val _hasNetwork = MutableStateFlow(false)
     val hasNetwork: StateFlow<Boolean> = _hasNetwork.asStateFlow()
 
     private val _dataRateBps = MutableStateFlow(0)
     val dataRateBps: StateFlow<Int> = _dataRateBps.asStateFlow()
 
-    private var displayJob:  Job? = null
-    private var udpJob:      Job? = null
-    private var rateJob:     Job? = null
-    private var popupJob:    Job? = null
+    private var displayJob: Job? = null
+    private var udpJob:     Job? = null
+    private var rateJob:    Job? = null
+    private var popupJob:   Job? = null
 
     private var bytesSentThisSecond = 0
+    private var serviceRunning      = false
+
+    // Receives STOP broadcast from notification STOP button
+    private val stopReceiver = object : BroadcastReceiver() {
+        override fun onReceive(context: Context, intent: Intent) {
+            if (intent.action == StreamingService.ACTION_STOP) {
+                stopStreaming()
+            }
+        }
+    }
 
     init {
         imuRepository.start(sampleRateUs = 20_000)
         startDisplayRefresh()
+        registerStopReceiver()
+    }
+
+    private fun registerStopReceiver() {
+        val filter = IntentFilter(StreamingService.ACTION_STOP)
+        try {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                appContext.registerReceiver(stopReceiver, filter,
+                    Context.RECEIVER_NOT_EXPORTED)
+            } else {
+                @Suppress("UnspecifiedRegisterReceiverFlag")
+                appContext.registerReceiver(stopReceiver, filter)
+            }
+        } catch (_: Exception) {}
     }
 
     private fun startDisplayRefresh() {
@@ -105,23 +131,35 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         viewModelScope.launch {
             val opened = udpSender.open(cfg.receiverIp, cfg.udpPort)
             if (!opened) {
-                showPopup(appContext.getString(R.string.status_cannot_connect, cfg.receiverIp))
+                showPopup(appContext.getString(
+                    R.string.status_cannot_connect, cfg.receiverIp))
                 return@launch
             }
 
             _streamState.value = StreamState.STREAMING
 
-            // Use configured sample rate
-            // sampleRateHz = 0 means "max" — use SENSOR_DELAY_FASTEST
-            val sampleRateUs = if (cfg.sampleRateHz <= 0) 0
-                               else (1_000_000f / cfg.sampleRateHz).toInt()
+            // Start foreground service
+            try {
+                val svcIntent = StreamingService.startIntent(
+                    appContext, cfg.receiverIp, cfg.udpPort, cfg.sampleRateHz)
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                    appContext.startForegroundService(svcIntent)
+                } else {
+                    appContext.startService(svcIntent)
+                }
+                serviceRunning = true
+            } catch (e: Exception) {
+                // Service failed to start — streaming still works, just no notification
+                serviceRunning = false
+            }
 
+            // Restart sensors at configured rate
+            val sampleRateUs = (1_000_000f / cfg.sampleRateHz).toInt()
             imuRepository.stop()
             imuRepository.start(sampleRateUs = sampleRateUs)
 
             bytesSentThisSecond = 0
-            val udpDelayMs = if (cfg.sampleRateHz <= 0) 1L
-                             else (1000f / cfg.sampleRateHz).toLong()
+            val udpDelayMs = (1000f / cfg.sampleRateHz).toLong()
 
             udpJob = viewModelScope.launch {
                 while (true) {
@@ -144,6 +182,16 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
                     delay(1_000L)
                     _dataRateBps.value  = bytesSentThisSecond
                     bytesSentThisSecond = 0
+                    // Update notification with live data rate
+                    if (serviceRunning) {
+                        try {
+                            StreamingService.updateNotification(
+                                appContext,
+                                cfg.sampleRateHz,
+                                formatDataRate(_dataRateBps.value)
+                            )
+                        } catch (_: Exception) {}
+                    }
                 }
             }
         }
@@ -153,9 +201,19 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         udpJob?.cancel();  udpJob  = null
         rateJob?.cancel(); rateJob = null
         udpSender.close()
-        _streamState.value   = StreamState.IDLE
-        _dataRateBps.value   = 0
-        bytesSentThisSecond  = 0
+        _streamState.value  = StreamState.IDLE
+        _dataRateBps.value  = 0
+        bytesSentThisSecond = 0
+
+        // Stop foreground service safely
+        if (serviceRunning) {
+            try {
+                appContext.stopService(
+                    Intent(appContext, StreamingService::class.java))
+            } catch (_: Exception) {}
+            serviceRunning = false
+        }
+
         // Restart sensors at display rate
         imuRepository.stop()
         imuRepository.start(sampleRateUs = 20_000)
@@ -174,19 +232,35 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         popupJob?.cancel()
         udpSender.close()
         imuRepository.stop()
+        try { appContext.unregisterReceiver(stopReceiver) } catch (_: Exception) {}
+        if (serviceRunning) {
+            try {
+                appContext.stopService(
+                    Intent(appContext, StreamingService::class.java))
+            } catch (_: Exception) {}
+        }
+    }
+
+    fun formatDataRate(bps: Int): String = when {
+        bps >= 1_000_000 -> "${"%.1f".format(bps / 1_000_000f)} MB/s"
+        bps >= 1_000     -> "${"%.1f".format(bps / 1_000f)} KB/s"
+        else             -> "$bps B/s"
     }
 
     private fun isNetworkAvailable(): Boolean {
-        val cm   = appContext.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
-        val caps = cm.getNetworkCapabilities(cm.activeNetwork ?: return false) ?: return false
-        return caps.hasTransport(NetworkCapabilities.TRANSPORT_WIFI) ||
+        val cm   = appContext.getSystemService(Context.CONNECTIVITY_SERVICE)
+                   as ConnectivityManager
+        val caps = cm.getNetworkCapabilities(cm.activeNetwork ?: return false)
+                   ?: return false
+        return caps.hasTransport(NetworkCapabilities.TRANSPORT_WIFI)     ||
                caps.hasTransport(NetworkCapabilities.TRANSPORT_ETHERNET) ||
                caps.hasTransport(NetworkCapabilities.TRANSPORT_CELLULAR)
     }
 
     private fun getDeviceIp(): String {
         try {
-            for (iface in NetworkInterface.getNetworkInterfaces()?.asSequence() ?: return "—") {
+            for (iface in NetworkInterface.getNetworkInterfaces()
+                              ?.asSequence() ?: return "—") {
                 if (!iface.isUp || iface.isLoopback) continue
                 for (addr in iface.inetAddresses.asSequence()) {
                     if (!addr.isLoopbackAddress && addr is Inet4Address)
