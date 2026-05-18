@@ -5,25 +5,42 @@ plugins {
 }
 
 android {
-    namespace = "com.daqmobile.imulink"
-    compileSdk = 35
+    namespace   = "com.daqmobile.imulink"
+    compileSdk  = 35
 
     defaultConfig {
-        applicationId = "com.daqmobile.imulink"
-        minSdk = 26
-        targetSdk = 35
-        versionCode = 1
-        versionName = "1.0.0"
+        applicationId         = "com.daqmobile.imulink"
+        minSdk                = 26
+        targetSdk             = 35
+        versionCode           = 3
+        versionName           = "1.0.2"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+    }
+
+    signingConfigs {
+        create("release") {
+            //These will be filled when keystore is generated
+            storeFile     = file("imulink-release.jks")
+            storePassword = "Shanul@20240219"
+            keyAlias      = "imulink"
+            keyPassword   = "Shanul@20240219"
+        }
     }
 
     buildTypes {
         release {
-            isMinifyEnabled = false
+            isMinifyEnabled   = true
+            isShrinkResources = true
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
+            signingConfig = signingConfigs.getByName("release")
+        }
+        debug {
+            isMinifyEnabled   = false
+            applicationIdSuffix = ".debug"
+            versionNameSuffix   = "-debug"
         }
     }
 
@@ -38,6 +55,18 @@ android {
 
     buildFeatures {
         compose = true
+    }
+
+    bundle {
+        language {
+            enableSplit = true
+        }
+        density {
+            enableSplit = true
+        }
+        abi {
+            enableSplit = true
+        }
     }
 }
 

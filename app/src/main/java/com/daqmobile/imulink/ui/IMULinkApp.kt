@@ -29,18 +29,15 @@ fun IMULinkApp() {
     val navController = rememberNavController()
     val viewModel: MainViewModel = viewModel()
     val streamState by viewModel.streamState.collectAsState()
-    val isStreaming  = streamState != StreamState.IDLE
     val stopFirst    = stringResource(R.string.status_stop_before_settings)
     val scope        = rememberCoroutineScope()
 
-    // Check onboarding state
     var showOnboarding by remember { mutableStateOf<Boolean?>(null) }
 
     LaunchedEffect(Unit) {
         showOnboarding = !viewModel.settingsRepository.isOnboardingDone()
     }
 
-    // Wait until we know whether to show onboarding
     if (showOnboarding == null) return
 
     if (showOnboarding == true) {
@@ -55,20 +52,25 @@ fun IMULinkApp() {
         return
     }
 
-    // Main app navigation
     NavHost(navController = navController, startDestination = Routes.HOME) {
 
+        // ── Home ──────────────────────────────────────────────────────────
         composable(Routes.HOME) {
             HomeScreen(
                 viewModel            = viewModel,
                 onNavigateToSettings = {
-                    if (!isStreaming) navController.navigate(Routes.SETTINGS)
-                    else viewModel.showPopup(stopFirst)
+                    // Read streamState at click time — not at composition time
+                    if (streamState != StreamState.IDLE) {
+                        viewModel.showPopup(stopFirst)
+                    } else {
+                        navController.navigate(Routes.SETTINGS)
+                    }
                 },
                 onNavigateToHelp = { navController.navigate(Routes.HELP) }
             )
         }
 
+        // ── Settings — slides from right ──────────────────────────────────
         composable(
             route = Routes.SETTINGS,
             enterTransition = {
@@ -92,6 +94,7 @@ fun IMULinkApp() {
             )
         }
 
+        // ── Help from Home — slides from left ─────────────────────────────
         composable(
             route = Routes.HELP,
             enterTransition = {
@@ -110,6 +113,7 @@ fun IMULinkApp() {
             HelpScreen(viewModel = viewModel, onBack = { navController.popBackStack() })
         }
 
+        // ── Help from Settings — slides from right ────────────────────────
         composable(
             route = Routes.HELP_FROM_SETTINGS,
             enterTransition = {
@@ -128,6 +132,7 @@ fun IMULinkApp() {
             HelpScreen(viewModel = viewModel, onBack = { navController.popBackStack() })
         }
 
+        // ── Sensor info — slides from right ───────────────────────────────
         composable(
             route = Routes.SENSOR_INFO,
             enterTransition = {
